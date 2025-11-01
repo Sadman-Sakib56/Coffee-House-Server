@@ -3,7 +3,7 @@ const cors = require('cors');
 
 require('dotenv').config();
 
-const { MongoClient, ServerApiVersion } = require('mongodb');
+const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -19,7 +19,8 @@ app.get('/', (req, res) => {
 
 
 
-const uri = `mongodb+srv://${process.env.COFFEE_HOUSE_USER}:${process.env.COFFEE_HOUSE_PASS}@cluster0.14vpjed.mongodb.net/?appName=Cluster0`;
+const uri = `mongodb+srv://${process.env.COFFEE_HOUSE_USER}:${process.env.COFFEE_HOUSE_PASS}@cluster0.14vpjed.mongodb.net/?retryWrites=true&w=majority`;
+
 
 // Create a MongoClient with a MongoClientOptions object to set the Stable API version
 const client = new MongoClient(uri, {
@@ -35,7 +36,21 @@ async function run() {
         // Connect the client to the server	(optional starting in v4.7)
         await client.connect();
 
-        const coffeeCollection = client.db('coffee-house-admin').collection('coffees')
+        const coffeeCollection = client.db('coffee-house-admin').collection('coffees');
+
+        app.get('/coffees', async (req, res) => {
+            // const cursor = coffeeCollection.find();
+            // const result = await cursor.toArray(); or same thing we can do in one line below;
+            const result = await coffeeCollection.find().toArray();
+            res.send(result);
+        })
+
+        app.get('/coffees/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await coffeeCollection.findOne(query);
+            res.send(result);
+        })
 
         // post from add coffee
         app.post('/coffees', async (req, res) => {
@@ -44,6 +59,28 @@ async function run() {
             const result = await coffeeCollection.insertOne(newCoffee);
             res.send(result);
         })
+
+        app.put('/coffees/:id', async (req, res) => {
+            const id = req.params.id;
+            const filter = { _id: new ObjectId(id) };
+            const updatedCoffee = req.body;
+            const updatedDoc = {
+                $set: updatedCoffee
+            }
+            const options = { upsert: true };
+            const result = await coffeeCollection.updateOne(filter, updatedDoc, options);
+
+            res.send(result);
+        })
+
+        app.delete('/coffees/:id', async (req, res) => {
+            const id = req.params.id;
+            const query = { _id: new ObjectId(id) };
+            const result = await coffeeCollection.deleteOne(query);
+            res.send(result);
+        })
+
+
 
 
 
